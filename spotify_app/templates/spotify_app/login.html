@@ -1,0 +1,8 @@
+<h1>Logga in</h1>
+
+<form action="{% url 'spotify_app:do_login' %}" method="post">
+{% csrf_token %}
+    <input type="text" name="username" id="username" value="c.gunning" /><br />
+    <input type="text" name="password" id="password" value="" /><br />
+<input type="submit" value="Logga in" />
+</form>

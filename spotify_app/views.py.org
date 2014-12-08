@@ -1,0 +1,98 @@
+from __future__ import unicode_literals
+
+from django.http import HttpResponse, HttpResponseRedirect, Http404
+from django.shortcuts import render, get_object_or_404
+from django.core.urlresolvers import reverse
+
+import logging
+
+import sys
+import threading
+
+import spotify
+
+# Events for coordination
+logged_in = threading.Event()
+end_of_track = threading.Event()
+
+playlist_list = []
+
+def on_connection_state_updated(session):
+    if session.connection.state is spotify.ConnectionState.LOGGED_IN:
+        logged_in.set()
+    else:
+        logged_in.clear()
+
+
+def on_end_of_track(self):
+    end_of_track.set()
+    current_track = playlist_list.pop(0)
+    session.player.load(current_track)
+    session.player.play()
+    
+logger = logging.getLogger(__name__)
+logger.debug("hejsan")
+
+
+config = spotify.Config()
+config.load_application_key_file(filename='/home/pi/django_projects/mysite/spotify_app/spotify_appkey.key')
+session = spotify.Session(config=config)
+    
+loop = spotify.EventLoop(session)
+loop.start()
+
+# Connect an audio sink
+audio = spotify.AlsaSink(session)
+    
+# Register event listeners
+session.on(
+    spotify.SessionEvent.CONNECTION_STATE_UPDATED, on_connection_state_updated)
+session.on(spotify.SessionEvent.END_OF_TRACK, on_end_of_track)
+
+def playlist(request):
+    context = {'playlist': playlist_list}
+    return render(request, 'spotify_app/playlist.html', context)
+
+current_track = None
+
+def play(request, track_id):
+    # Play a track
+    global current_track
+    
+    track = session.get_track(track_id).load()
+    if current_track == None:
+        current_track = track
+        session.player.load(track)
+        session.player.play()
+
+        # Wait for playback to complete or Ctrl+C
+        while not end_of_track.wait(0.1):
+            pass
+        end_of_track.clear();
+    else:
+        playlist_list.append(track)
+    
+    tracks = []
+    return render(request, 'spotify_app/search.html', tracks)
+
+def login(request):
+    current_track = None
+    return render(request, 'spotify_app/login.html')
+    
+def do_login(request):
+    session.login(request.POST['username'], request.POST['password'])
+    logger.debug("Väntar")
+    logged_in.wait()
+    logger.debug("Väntat klart")
+    tracks = []
+    return render(request, 'spotify_app/search.html', tracks)
+    
+def logout(request):
+    session.logout()
+    return render(request, 'spotify_app/login.html')
+    
+def search(request):
+    search = session.search(request.POST['query']);
+    search.load()
+    context = {'tracks': search.tracks}
+    return render(request, 'spotify_app/search.html', context)

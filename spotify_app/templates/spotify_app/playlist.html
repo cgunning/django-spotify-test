@@ -1,0 +1,5 @@
+<ul>
+{% for track in playlist %}
+    <li><a href="{% url 'spotify_app:remove_from_queue' queue_id=forloop.counter0 %}">{{ track.name }}</a></li>
+{% endfor %}
+</ul>

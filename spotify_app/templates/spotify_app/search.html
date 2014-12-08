@@ -1,0 +1,38 @@
+﻿<script>
+function myFunction() {
+    document.getElementById("volume-form").submit();
+    console.log(document.getElementById("volume").value)
+}
+</script>
+
+<h1>Sök</h1>
+<a href="{% url 'spotify_app:set_audio_output' '2' %}">HDMI</a> <a href="{% url 'spotify_app:set_audio_output' '1' %}">3.5 mm</a><br />
+<a href="{% url 'spotify_app:play_prev' %}">Spela förra</a> <a href="{% url 'spotify_app:play_next' %}">Spela nästa</a>
+
+<form action="{% url 'spotify_app:search' %}" method="post">
+{% csrf_token %}
+    <input type="text" name="query" id="query" value="" /><br />
+    <input type="submit" value="Sök" />
+</form>
+<form action="{% url 'spotify_app:set_volume' %}" method="post" id="volume-form">
+{% csrf_token %}
+    <input type="range" name="volume" id="volume" min="70" max="100" value="{{ current_volume }}" onchange="myFunction()" /><br />
+</form>
+
+<div style="float: left; padding-right: 20px;">
+    <h3>Results</h3>
+    <ul>
+    {% for track in tracks %}
+        <li><a href="{% url 'spotify_app:play' track_id=track.link.uri %}">{{ track.name }}</a></li>
+    {% endfor %}
+    </ul>
+</div>
+
+<div style="float: left;">
+    <h3>Queue</h3>
+    <ul>
+    {% for track in playlist %}
+        <li><a href="{% url 'spotify_app:remove_from_queue' queue_id=forloop.counter0 %}">{{ track.name }}</a></li>
+    {% endfor %}
+    </ul>
+</div>
